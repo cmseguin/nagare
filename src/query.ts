@@ -3,7 +3,6 @@ import { tap, map } from "rxjs/operators";
 import { xxHash32 } from 'js-xxhash'
 import { QueryCycle, QueryFn, QueryOptions, QueryResponse, StorageItem, StorageKey } from "./model";
 import { LocalForageInstance } from "./storage";
-import { QueryClient } from ".";
 
 export class Query<T> {
   private data$: BehaviorSubject<T | undefined> = new BehaviorSubject<T | undefined>(undefined)

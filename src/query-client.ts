@@ -1,7 +1,7 @@
 import localForage from "localforage";
 import { Observable } from "rxjs";
 import { QueryFn, QueryOptions, QueryResponse, StorageKey } from "./model";
-import { Query } from "./query";
+import { QueryObservable } from "./query-observable";
 import { LocalForageDrivers, LocalForageInstance } from "./storage";
 
 export class QueryClient {
@@ -37,22 +37,6 @@ export class QueryClient {
       throw new Error('Key not provided');
     }
 
-    return new Observable<QueryResponse<T>>(observer => {
-      if (typeof options.onSubscribe === 'function') {
-        options.onSubscribe(null)
-      }
-
-      const query = new Query(observer, this.storage, { ...options, key, queryFn });
-
-      query.run()
-
-      return () => {
-        if (typeof options.onUnsubscribe === 'function') {
-          options.onUnsubscribe(null)
-        }
-        query.cancel();
-        observer.complete();
-      }
-    })
+    return new QueryObservable(this.storage, key, queryFn, options);
   }
 }
