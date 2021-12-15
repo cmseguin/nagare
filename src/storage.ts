@@ -7,7 +7,7 @@ localForage.defineDriver(memoryDriver);
 localForage.defineDriver(sessionDriver);
 
 export type LocalForageInstance = ReturnType<typeof localForage.createInstance>;
-export const LocalForageDrivers: Record<string, string> = {
+export const LocalForageDrivers = {
   LOCALSTORAGE: LOCALSTORAGE,
   SESSIONSTORAGE: sessionDriver._driver,
   MEMORY: memoryDriver._driver,

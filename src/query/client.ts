@@ -1,16 +1,22 @@
 import localForage from "localforage";
 import { Observable } from "rxjs";
-import { QueryFn, QueryOptions, QueryResponse, StorageKey } from "./model";
-import { QueryObservable } from "./query-observable";
-import { LocalForageDrivers, LocalForageInstance } from "./storage";
+import { QueryClientOptions, QueryFn, QueryOptions, QueryResponse, StorageKey } from "../model";
+import { QueryObservable } from "./observable";
+import { xxHash32 } from 'js-xxhash'
+import { LocalForageDrivers, LocalForageInstance } from "../storage";
 
 export class QueryClient {
+  private storageId: string;
   public readonly storage: LocalForageInstance;
 
-  constructor() {
+  constructor(
+    options: QueryClientOptions = {}
+  ) {
+    this.storageId = options.storageId ?? `query-client-${this.generateUid()}`;
     this.storage = localForage.createInstance({
-      driver: [LocalForageDrivers.MEMORY],
-      name: 'query-client'
+      driver: [(options.storageDriver ?? LocalForageDrivers.MEMORY)],
+      name: this.storageId,
+      storeName: this.storageId,
     });
   }
 
@@ -27,16 +33,14 @@ export class QueryClient {
     const queryFn = typeof arg1 === 'function' ? arg1 : options?.queryFn;
     const key = typeof arg0 === 'string' ? arg0 : options?.key;
 
-    // Handle no query function
-    if (!queryFn) {
-      throw new Error('Query function not provided');
-    }
+    return new QueryObservable(this.storage, {
+      key, 
+      queryFn,
+      ...options
+    });
+  }
 
-    // Handle no key
-    if (!key) {
-      throw new Error('Key not provided');
-    }
-
-    return new QueryObservable(this.storage, key, queryFn, options);
+  private generateUid(): string {
+    return xxHash32(Math.random().toString(36)).toString(16);
   }
 }

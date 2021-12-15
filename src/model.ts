@@ -1,4 +1,4 @@
-import { LocalForageInstance } from "./storage";
+import { LocalForageInstance, LocalForageDrivers } from "./storage";
 
 type Primitives = string | number | boolean;
 type PrimitiveObject = { [key: string]: PrimitiveObject | Primitives | PrimitiveObject[] | Primitives[] }
@@ -17,6 +17,11 @@ export enum QueryCycle {
   PRE_FETCH = 'pre-fetch',
   POST_CACHE_POPULATION = 'post-cache-population',
   ON_STALE = 'on-stale',
+}
+
+export interface QueryClientOptions {
+  storageId?: string;
+  storageDriver?: string;
 }
 
 export interface QueryResponse<T> {
@@ -44,6 +49,7 @@ export interface QueryOptions<T> {
   storage?: LocalForageInstance
   cacheTime?: number
   staleTime?: number
+  staleCheckInterval?: number
   observe?: Omit<keyof QueryResponse<T>, 'refresh' & 'cancel'>[]
   queryFn?: QueryFn<T>
   onSuccess?: (context: any) => void

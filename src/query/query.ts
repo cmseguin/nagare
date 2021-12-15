@@ -1,8 +1,8 @@
 import { BehaviorSubject, combineLatest, interval, of, Subscriber } from "rxjs";
 import { tap, map } from "rxjs/operators";
 import { xxHash32 } from 'js-xxhash'
-import { QueryCycle, QueryFn, QueryOptions, QueryResponse, StorageItem, StorageKey } from "./model";
-import { LocalForageInstance } from "./storage";
+import { QueryCycle, QueryFn, QueryOptions, QueryResponse, StorageItem, StorageKey } from "../model";
+import { LocalForageInstance } from "../storage";
 
 export class Query<T> {
   private data$: BehaviorSubject<T | undefined> = new BehaviorSubject<T | undefined>(undefined)
@@ -43,7 +43,7 @@ export class Query<T> {
     this.key = this.options.key
     this.hash = this.encodeKey(this.options.key)
 
-    const queryIntervalSub = combineLatest([of(null), interval(1000)]).pipe(
+    const queryIntervalSub = combineLatest([of(null), interval(this.options.staleCheckInterval ?? 1000)]).pipe(
       tap(() => this.updateIsStale())
     ).subscribe()
 
@@ -114,12 +114,12 @@ export class Query<T> {
   private async callQueryFn(isRefresh: boolean) {
     let resultFromStorage: StorageItem<T> | null | undefined
     const cacheItem = await this.storage.getItem<string>(this.hash)
-
+    
     this.isRefresh$.next(isRefresh)
-
+    
     // initial emit
     this.emit(QueryCycle.START)
-
+    
     if (!isRefresh && cacheItem) {
       try {
         resultFromStorage = JSON.parse(cacheItem ?? 'null') as StorageItem<T> | null
@@ -131,6 +131,7 @@ export class Query<T> {
         this.stalesAt$.next(resultFromStorage.stalesAt)
         this.expiresAt$.next(resultFromStorage.expiresAt)
         this.fromCache$.next(true)
+        this.isStale$.next(this._isStale())
 
         // After Cache
         this.emit(QueryCycle.POST_CACHE_POPULATION)
@@ -145,6 +146,7 @@ export class Query<T> {
         this.data$.next(data)
         this.updatedAt$.next(Date.now())
         this.stalesAt$.next(Date.now() + (this?.options?.staleTime ?? 0))
+        if (this?.options?.staleTime) { this.isStale$.next(false) }
         this.expiresAt$.next(Date.now() + (this?.options?.cacheTime ?? 0))
         this.fromCache$.next(false)
         this.isSuccess$.next(true)
@@ -163,9 +165,10 @@ export class Query<T> {
         this.isError$.next(true)
       } finally {
         this.isFetching$.next(false)
-        this.emit(QueryCycle.END)
       }
     }
+
+    this.emit(QueryCycle.END)
   }
 
   private emit(cycle: QueryCycle) {
