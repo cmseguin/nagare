@@ -1,7 +1,7 @@
 {
   "name": "nagare.js",
   "version": "0.0.1",
-  "description": "A state-management library for front-end frameworks",
+  "description": "A stale while revalidate library for front-end frameworks",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {

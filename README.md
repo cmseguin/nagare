@@ -9,6 +9,17 @@ Nagare is a library that helps implement "stale while revalidate" or SWR. Contra
 ### Examples
 ```ts
 import { QueryClient } from 'nagare.js';
+import { filter } from 'rxjs/operators'
 
-const queryClient = new QueryClient()
+const queryClient = new QueryClient();
+
+const query$ = queryClient.query('myQueryKey', async () => 'foo');
+
+query$
+  .pipe(
+    filter(response => response.isSuccess)
+  )
+  .subscribe(({ data }) => {
+    console.log('My data: ', data) // My data: foo
+  })
 ```
