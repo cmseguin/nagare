@@ -64,6 +64,6 @@ describe('QueryClient', () => {
   })
 
   it('generates a random storage name if none specify', () => {
-    expect((queryClient.storage as any)._config.name).toMatch(/^query-client-[a-z0-9]{7,8}$/)
+    expect((queryClient.storage as any)._config.name).toMatch(/^query-client-[a-z0-9]{4,8}$/)
   })
 })
