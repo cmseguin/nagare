@@ -1,6 +1,6 @@
 {
   "name": "nagare.js",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "A stale while revalidate library for front-end frameworks",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
