@@ -83,7 +83,7 @@ describe("Query", () => {
     expect(mockCancel).toHaveBeenCalledTimes(1);
   });
 
-  it("will call post-cache cycle emit if value is wrong in storage", async () => {
+  it("wont call post-cache cycle emit if value doesn't contain expiration", async () => {
     const storageKey = "test";
     const hash = xxHash32(JSON.stringify(storageKey)).toString(16);
     await storage.setItem(hash, "{}");
@@ -94,7 +94,23 @@ describe("Query", () => {
     });
     await query.run();
 
-    expect(mockNext).toHaveBeenCalledWith(
+    expect(mockNext).not.toHaveBeenCalledWith(
+      expect.objectContaining({ cycle: QueryCycle.POST_CACHE_POPULATION })
+    );
+  });
+
+  it("wont call post-cache cycle emit if value contains old expiration", async () => {
+    const storageKey = "test";
+    const hash = xxHash32(JSON.stringify(storageKey)).toString(16);
+    await storage.setItem(hash, `{ "data": {}, "expiresAt": 0 }`);
+
+    const query = new Query(subscriber, storage, {
+      key: storageKey,
+      queryFn: mockFetch,
+    });
+    await query.run();
+
+    expect(mockNext).not.toHaveBeenCalledWith(
       expect.objectContaining({ cycle: QueryCycle.POST_CACHE_POPULATION })
     );
   });
@@ -111,6 +127,22 @@ describe("Query", () => {
     await query.run();
 
     expect(mockNext).not.toHaveBeenCalledWith(
+      expect.objectContaining({ cycle: QueryCycle.POST_CACHE_POPULATION })
+    );
+  });
+
+  it("will call post-cache cycle emit if value contains future expiration", async () => {
+    const storageKey = "test";
+    const hash = xxHash32(JSON.stringify(storageKey)).toString(16);
+    await storage.setItem(hash, `{ "data": {}, "expiresAt": 99999999999999 }`);
+
+    const query = new Query(subscriber, storage, {
+      key: storageKey,
+      queryFn: mockFetch,
+    });
+    await query.run();
+
+    expect(mockNext).toHaveBeenCalledWith(
       expect.objectContaining({ cycle: QueryCycle.POST_CACHE_POPULATION })
     );
   });
@@ -242,5 +274,42 @@ describe("Query", () => {
 
     expect(mockNext).toHaveBeenCalledTimes(6);
     expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("calls the onSuccess hook if call is success", async () => {
+    const storageKey = "myQueryKey";
+    const mockFetchResponse = { data: { test: "test" } };
+    mockFetch.mockResolvedValue(mockFetchResponse);
+
+    const onSuccess = jest.fn();
+
+    const query = new Query(subscriber, storage, {
+      key: storageKey,
+      queryFn: mockFetch,
+      onSuccess,
+    });
+
+    await query.run();
+
+    expect(onSuccess).toHaveBeenCalledTimes(1);
+    expect(onSuccess).toHaveBeenCalledWith(mockFetchResponse);
+  });
+
+  it("calls the onError hook if call fails", async () => {
+    const storageKey = "myQueryKey";
+    mockFetch.mockRejectedValue(new Error("test"));
+
+    const onError = jest.fn();
+
+    const query = new Query(subscriber, storage, {
+      key: storageKey,
+      queryFn: mockFetch,
+      onError,
+    });
+
+    await query.run();
+
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onError).toHaveBeenCalledWith(expect.any(Error));
   });
 });

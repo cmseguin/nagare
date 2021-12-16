@@ -12,48 +12,20 @@ import {
 import { LocalForageInstance } from "../storage";
 
 export class Query<T> {
-  private data$: BehaviorSubject<T | undefined> = new BehaviorSubject<
-    T | undefined
-  >(undefined);
-  private error$: BehaviorSubject<unknown | undefined> = new BehaviorSubject<
-    unknown | undefined
-  >(undefined);
-  private isFetching$: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(
-    false
-  );
-  private isLoading$: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(
-    false
-  );
-  private isIdle$: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(
-    false
-  );
-  private isError$: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(
-    false
-  );
-  private isSuccess$: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(
-    false
-  );
-  private isRefresh$: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(
-    false
-  );
-  private fromCache$: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(
-    false
-  );
-  private isStale$: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(
-    true
-  );
-  private createdAt$: BehaviorSubject<number> = new BehaviorSubject<number>(
-    Date.now()
-  );
-  private updatedAt$: BehaviorSubject<number | undefined> = new BehaviorSubject<
-    number | undefined
-  >(undefined);
-  private stalesAt$: BehaviorSubject<number | undefined> = new BehaviorSubject<
-    number | undefined
-  >(undefined);
-  private expiresAt$: BehaviorSubject<number | undefined> = new BehaviorSubject<
-    number | undefined
-  >(undefined);
+  private data$ = new BehaviorSubject<T | undefined>(undefined);
+  private error$ = new BehaviorSubject<unknown | undefined>(undefined);
+  private isFetching$ = new BehaviorSubject<boolean>(false);
+  private isLoading$ = new BehaviorSubject<boolean>(false);
+  private isIdle$ = new BehaviorSubject<boolean>(false);
+  private isError$ = new BehaviorSubject<boolean>(false);
+  private isSuccess$ = new BehaviorSubject<boolean>(false);
+  private isRefresh$ = new BehaviorSubject<boolean>(false);
+  private fromCache$ = new BehaviorSubject<boolean>(false);
+  private isStale$ = new BehaviorSubject<boolean>(true);
+  private createdAt$ = new BehaviorSubject<number>(Date.now());
+  private updatedAt$ = new BehaviorSubject<number | undefined>(undefined);
+  private stalesAt$ = new BehaviorSubject<number | undefined>(undefined);
+  private expiresAt$ = new BehaviorSubject<number | undefined>(undefined);
 
   private _lastResponse?: QueryResponse<T>;
   private options: QueryOptions<T>;
@@ -170,9 +142,18 @@ export class Query<T> {
         resultFromStorage = JSON.parse(
           cacheItem ?? "null"
         ) as StorageItem<T> | null;
+
         if (!resultFromStorage) {
           throw new Error("Invalid cache");
         }
+
+        if (
+          !resultFromStorage.expiresAt ||
+          resultFromStorage.expiresAt < Date.now()
+        ) {
+          throw new Error("Cache expired");
+        }
+
         this.data$.next(resultFromStorage.data);
         this.updatedAt$.next(resultFromStorage.updatedAt);
         this.stalesAt$.next(resultFromStorage.stalesAt);
@@ -213,9 +194,17 @@ export class Query<T> {
             updatedAt: this.updatedAt$.value,
           } as StorageItem<T>)
         );
+
+        if (typeof this.options.onSuccess === "function") {
+          this.options.onSuccess(data);
+        }
       } catch (error) {
         this.error$.next(error);
         this.isError$.next(true);
+
+        if (typeof this.options.onError === "function") {
+          this.options.onError(error);
+        }
       } finally {
         this.isFetching$.next(false);
       }
