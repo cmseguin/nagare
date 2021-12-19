@@ -1,17 +1,23 @@
-import { BehaviorSubject, combineLatest, interval, of, Subscriber } from "rxjs";
-import { tap, map } from "rxjs/operators";
-import { xxHash32 } from "js-xxhash";
 import {
+  BehaviorSubject,
+  combineLatest,
+  interval,
+  Subscriber,
+  merge,
+} from "rxjs";
+import { tap, map, filter } from "rxjs/operators";
+import {
+  QueryContext,
   QueryCycle,
   QueryFn,
   QueryOptions,
   QueryResponse,
-  StorageItem,
-  StorageKey,
-} from "../model";
-import { LocalForageInstance } from "../storage";
+} from "./model";
+import { encodeKey, StorageKey } from "../storage";
+import { NagareClient } from "../client";
+import { NotificationEvent, NotificationType } from "../model";
 
-export class Query<T> {
+export class Query<T = unknown> {
   private data$ = new BehaviorSubject<T | undefined>(undefined);
   private error$ = new BehaviorSubject<unknown | undefined>(undefined);
   private isFetching$ = new BehaviorSubject<boolean>(false);
@@ -27,71 +33,26 @@ export class Query<T> {
   private stalesAt$ = new BehaviorSubject<number | undefined>(undefined);
   private expiresAt$ = new BehaviorSubject<number | undefined>(undefined);
 
-  private _lastResponse?: QueryResponse<T>;
-  private options: QueryOptions<T>;
-  private key: StorageKey;
-  private hash: string;
+  private queryKey: StorageKey;
   private queryFn: QueryFn<T>;
+  private options: QueryOptions<T>;
+  private subscriber: Subscriber<QueryResponse<T>>;
+  private client: NagareClient;
+  private abortController = new AbortController();
 
-  constructor(
-    private observer: Subscriber<QueryResponse<T>>,
-    private storage: LocalForageInstance,
-    options: Partial<QueryOptions<T>> = {}
-  ) {
+  private _lastResponse?: QueryResponse<T>;
+
+  constructor(options: QueryOptions<T>) {
     this.options = this.defaultOptions(options);
-    if (!this.options.queryFn) {
-      throw new Error("QueryFn is required");
-    }
+    this.client = this.options.client;
+    this.subscriber = this.options.subscriber;
     this.queryFn = this.options.queryFn;
+    this.queryKey = this.options.queryKey;
 
-    if (!this.options.key) {
-      throw new Error("Key is required");
-    }
-    this.key = this.options.key;
-    this.hash = this.encodeKey(this.options.key);
-
-    const queryIntervalSub = combineLatest([
-      of(null),
-      interval(this.options.staleCheckInterval ?? 1000),
-    ])
-      .pipe(tap(() => this.updateIsStale()))
-      .subscribe();
-
-    const isLoadingSub = combineLatest([
-      this.isFetching$,
-      this.fromCache$,
-      this.updatedAt$,
-      this.isRefresh$,
-    ])
-      .pipe(
-        map(
-          ([isFetching, fromCache, updatedAt, isRefresh]) =>
-            isFetching && !fromCache && !updatedAt && !isRefresh
-        ),
-        tap((isLoading) => this.isLoading$.next(isLoading))
-      )
-      .subscribe();
-
-    const isIdleSub = combineLatest([
-      this.data$,
-      this.fromCache$,
-      this.isRefresh$,
-      this.isFetching$,
-      this.isSuccess$,
-      this.isError$,
-    ])
-      .pipe(
-        map((factors) => factors.every((factor) => !factor)),
-        tap((isIdle) => this.isIdle$.next(isIdle))
-      )
-      .subscribe();
-
-    // When query observable is unsubscribed
-    this.observer.add(() => {
-      queryIntervalSub.unsubscribe();
-      isLoadingSub.unsubscribe();
-      isIdleSub.unsubscribe();
-    });
+    this.notifications$Handler();
+    this.isLoading$Handler();
+    this.isStale$Handler();
+    this.isIdle$Handler();
   }
 
   public async run() {
@@ -103,107 +64,60 @@ export class Query<T> {
   }
 
   public cancel() {
+    this.abortController.abort();
     if (typeof this.options.onCancel === "function") {
-      this.options.onCancel(null);
-    }
-  }
-
-  private _isStale() {
-    if (!this.stalesAt$.value) {
-      return true;
-    }
-
-    if (Date.now() > this.stalesAt$.value) {
-      return true;
-    }
-
-    return false;
-  }
-
-  private updateIsStale() {
-    const isStale = this._isStale();
-    if (isStale !== this.isStale$.value) {
-      this.isStale$.next(isStale);
-      this.emit(QueryCycle.ON_STALE);
+      this.options.onCancel(this.getQueryContext());
     }
   }
 
   private async callQueryFn(isRefresh: boolean) {
-    let resultFromStorage: StorageItem<T> | null | undefined;
-    const cacheItem = await this.storage.getItem<string>(this.hash);
-
+    const cacheItem = await this.client.getCacheData<T>(this.queryKey);
     this.isRefresh$.next(isRefresh);
 
     // initial emit
     this.emit(QueryCycle.START);
 
     if (!isRefresh && cacheItem) {
-      try {
-        resultFromStorage = JSON.parse(
-          cacheItem ?? "null"
-        ) as StorageItem<T> | null;
+      this.data$.next(cacheItem.data);
+      this.updatedAt$.next(cacheItem.updatedAt);
+      this.stalesAt$.next(cacheItem.stalesAt);
+      this.expiresAt$.next(cacheItem.expiresAt);
+      this.fromCache$.next(true);
 
-        if (!resultFromStorage) {
-          throw new Error("Invalid cache");
-        }
-
-        if (
-          !resultFromStorage.expiresAt ||
-          resultFromStorage.expiresAt < Date.now()
-        ) {
-          throw new Error("Cache expired");
-        }
-
-        this.data$.next(resultFromStorage.data);
-        this.updatedAt$.next(resultFromStorage.updatedAt);
-        this.stalesAt$.next(resultFromStorage.stalesAt);
-        this.expiresAt$.next(resultFromStorage.expiresAt);
-        this.fromCache$.next(true);
-        this.isStale$.next(this._isStale());
-
-        // After Cache
-        this.emit(QueryCycle.POST_CACHE_POPULATION);
-      } catch {
-        // ignore
-      }
+      // After Cache
+      this.emit(QueryCycle.POST_CACHE_POPULATION);
     }
 
     if (this.isStale$.value || isRefresh || this.isError$.value) {
       this.isFetching$.next(true);
       this.emit(QueryCycle.PRE_FETCH);
       try {
-        const data = await this.queryFn(null);
-        this.data$.next(data);
-        this.updatedAt$.next(Date.now());
-        this.stalesAt$.next(Date.now() + (this?.options?.staleTime ?? 0));
-        if (this?.options?.staleTime) {
-          this.isStale$.next(false);
-        }
-        this.expiresAt$.next(Date.now() + (this?.options?.cacheTime ?? 0));
+        const data = await this.queryFn(this.getQueryContext());
+
+        const { stalesAt, expiresAt, updatedAt } =
+          await this.client.setCacheData(this.queryKey, data, {
+            staleTime: this.options.staleTime,
+            cacheTime: this.options.cacheTime,
+          });
+
+        this.updatedAt$.next(updatedAt);
+        this.stalesAt$.next(stalesAt);
+        this.expiresAt$.next(expiresAt);
         this.fromCache$.next(false);
         this.isSuccess$.next(true);
         this.isError$.next(false);
         this.error$.next(undefined);
-
-        await this.storage.setItem(
-          this.hash,
-          JSON.stringify({
-            data,
-            expiresAt: this.expiresAt$.value,
-            stalesAt: this.stalesAt$.value,
-            updatedAt: this.updatedAt$.value,
-          } as StorageItem<T>)
-        );
+        this.data$.next(data);
 
         if (typeof this.options.onSuccess === "function") {
-          this.options.onSuccess(data);
+          this.options.onSuccess(this.getQueryContext(), data);
         }
       } catch (error) {
         this.error$.next(error);
         this.isError$.next(true);
 
         if (typeof this.options.onError === "function") {
-          this.options.onError(error);
+          this.options.onError(this.getQueryContext(), error);
         }
       } finally {
         this.isFetching$.next(false);
@@ -217,7 +131,7 @@ export class Query<T> {
     const response = this.buildQueryResponse(cycle);
 
     if (!this._lastResponse || !this.options.observe) {
-      this.observer.next(response);
+      this.subscriber.next(response);
     }
 
     if (this._lastResponse && this.options.observe) {
@@ -229,7 +143,7 @@ export class Query<T> {
         );
 
       if (change) {
-        this.observer.next(response);
+        this.subscriber.next(response);
       }
     }
 
@@ -238,8 +152,7 @@ export class Query<T> {
 
   private buildQueryResponse(cycle: QueryCycle): QueryResponse<T> {
     return {
-      key: this.key,
-      hash: this.hash,
+      queryKey: this.queryKey,
       data: this.data$.value,
       error: this.error$.value,
       isIdle: this.isIdle$.value,
@@ -258,16 +171,129 @@ export class Query<T> {
     };
   }
 
-  private defaultOptions(options: Partial<QueryOptions<T>>): QueryOptions<T> {
+  private defaultOptions(options: QueryOptions<T>): QueryOptions<T> {
     return {
-      cacheTime: 0,
+      cacheTime: 5 * 60 * 1000,
       staleTime: 0,
       observe: undefined,
       ...options,
     };
   }
 
-  private encodeKey(key: StorageKey): string {
-    return xxHash32(JSON.stringify(key)).toString(16);
+  public getQueryContext(): QueryContext<T> {
+    return {
+      queryKey: this.queryKey,
+      observer: this.subscriber,
+      signal: this.abortController.signal,
+      options: this.options,
+    };
+  }
+
+  private isLoading$Handler() {
+    const isLoadingSub = combineLatest([
+      this.isFetching$,
+      this.fromCache$,
+      this.updatedAt$,
+      this.isRefresh$,
+    ])
+      .pipe(
+        map(
+          ([isFetching, fromCache, updatedAt, isRefresh]) =>
+            isFetching && !fromCache && !updatedAt && !isRefresh
+        ),
+        tap((isLoading) => this.isLoading$.next(isLoading))
+      )
+      .subscribe();
+
+    this.subscriber.add(() => {
+      isLoadingSub.unsubscribe();
+    });
+  }
+
+  private isStale$Handler() {
+    const intervalSymbol = Symbol("interval");
+    const isStale = () => {
+      if (!this.stalesAt$.value) {
+        return true;
+      }
+
+      if (Date.now() >= this.stalesAt$.value) {
+        return true;
+      }
+
+      return false;
+    };
+
+    const sub = merge(
+      this.stalesAt$,
+      interval(this.options.staleCheckInterval ?? 1000).pipe(
+        map(() => intervalSymbol)
+      )
+    )
+      .pipe(
+        map((value) => {
+          const stale = isStale();
+          if (stale !== this.isStale$.value) {
+            this.isStale$.next(stale);
+            return value === intervalSymbol;
+          }
+        }),
+        // Only emit when its coming from the interval
+        filter((emit) => !!emit),
+        tap(() => this.emit(QueryCycle.ON_STALE))
+      )
+      .subscribe();
+
+    this.subscriber.add(() => {
+      sub.unsubscribe();
+    });
+  }
+
+  private isIdle$Handler() {
+    const isIdleSub = combineLatest([
+      this.data$,
+      this.fromCache$,
+      this.isRefresh$,
+      this.isFetching$,
+      this.isSuccess$,
+      this.isError$,
+    ])
+      .pipe(
+        map((factors) => factors.every((factor) => !factor)),
+        tap((isIdle) => this.isIdle$.next(isIdle))
+      )
+      .subscribe();
+
+    this.subscriber.add(() => {
+      isIdleSub.unsubscribe();
+    });
+  }
+
+  private notifications$Handler() {
+    const sub = this.client.notifications$
+      .pipe(
+        // Only look for notifications addressed to this query
+        filter(
+          ({ key }) =>
+            (!!key && encodeKey(key) === encodeKey(this.queryKey)) || !key
+        ),
+        tap((event) => this.notificationReducer(event))
+      )
+      .subscribe();
+
+    this.subscriber.add(() => {
+      sub.unsubscribe();
+    });
+  }
+
+  private notificationReducer(event: NotificationEvent) {
+    switch (event.type) {
+      case NotificationType.queryCancel:
+        return this.cancel();
+      case NotificationType.queryRefresh:
+        return this.refresh();
+      default:
+        console.warn(`Unknown event type: ${event.type}`);
+    }
   }
 }

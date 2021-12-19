@@ -1,11 +1,18 @@
-import localforage from "localforage";
+import { NagareClient } from "../client";
 import { QueryObservable } from "./observable";
 
+let client: NagareClient;
+
 describe("QueryObservable", () => {
-  it("throws if no storage is passed", () => {
+  beforeAll(() => {
+    client = new NagareClient();
+  });
+
+  it("throws if no client is passed", () => {
     expect(() => {
-      new QueryObservable(undefined, {
-        key: "test",
+      new QueryObservable({
+        client: undefined,
+        queryKey: "test",
         queryFn: () => Promise.resolve(undefined),
       });
     }).toThrowError();
@@ -13,7 +20,9 @@ describe("QueryObservable", () => {
 
   it("throws if no key is passed", () => {
     expect(() => {
-      new QueryObservable(localforage, {
+      new QueryObservable({
+        client,
+        queryKey: undefined,
         queryFn: () => Promise.resolve(undefined),
       });
     }).toThrowError();
@@ -21,15 +30,18 @@ describe("QueryObservable", () => {
 
   it("throws if no queryFn is passed", () => {
     expect(() => {
-      new QueryObservable(localforage, {
-        key: "test",
+      new QueryObservable({
+        client,
+        queryKey: "test",
+        queryFn: undefined,
       });
     }).toThrowError();
   });
 
   it("Returns an observable", () => {
-    const queryObservable = new QueryObservable(localforage, {
-      key: "test",
+    const queryObservable = new QueryObservable({
+      client,
+      queryKey: "test",
       queryFn: () => Promise.resolve(undefined),
     });
 
