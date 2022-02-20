@@ -1,21 +1,19 @@
-import { QueryClient } from "./client";
-import { filter, switchMap, take, tap } from "rxjs/operators";
-import { of, Subscription } from "rxjs";
-import { QueryCycle } from "../model";
+import { NagareClient } from "./client";
+import { Subscription } from "rxjs";
 
 const mockFetch = jest.fn();
 const mockUnsub = jest.fn();
 const mockSub = jest.fn();
-let queryClient: QueryClient;
+let client: NagareClient;
 const subscriptions: Subscription[] = [];
 
-describe("QueryClient", () => {
+describe("NagareClient", () => {
   beforeAll(() => {
-    queryClient = new QueryClient();
+    client = new NagareClient();
   });
 
   beforeEach(async () => {
-    await queryClient.storage.clear();
+    await (client as any).storage.clear();
   });
 
   afterEach(() => {
@@ -26,7 +24,7 @@ describe("QueryClient", () => {
   });
 
   it("returns a queryClient correctly when instanciate", () => {
-    expect(queryClient).toBeTruthy();
+    expect(client).toBeTruthy();
   });
 
   it("returns an observable when calling the query method", () => {
@@ -34,47 +32,43 @@ describe("QueryClient", () => {
     const mockFetchResponse = "myResponse";
     mockFetch.mockResolvedValue(mockFetchResponse);
 
-    const query$ = queryClient.query(storageKey, mockFetch);
+    const query$ = client.query(storageKey, mockFetch);
 
     expect(typeof query$.subscribe === "function").toBeTruthy();
   });
 
-  it("Calls onUnsubscribe when unsubscribing", () => {
+  it("calls onUnsubscribe when unsubscribing", () => {
     const storageKey = "test";
-    const query$ = queryClient.query(
-      storageKey,
-      () => Promise.resolve(undefined),
-      { onUnsubscribe: mockUnsub }
-    );
+    const query$ = client.query(storageKey, () => Promise.resolve(undefined), {
+      onUnsubscribe: mockUnsub,
+    });
     const sub = query$.subscribe();
     sub.unsubscribe();
     expect(mockUnsub).toHaveBeenCalledTimes(1);
   });
 
-  it("Calls onSubscribe when subscribing", () => {
+  it("calls onSubscribe when subscribing", () => {
     const storageKey = "test";
-    const query$ = queryClient.query(
-      storageKey,
-      () => Promise.resolve(undefined),
-      { onSubscribe: mockSub }
-    );
+    const query$ = client.query(storageKey, () => Promise.resolve(undefined), {
+      onSubscribe: mockSub,
+    });
     const sub = query$.subscribe();
     subscriptions.push(sub);
     expect(mockSub).toHaveBeenCalledTimes(1);
   });
 
   it("throws if no queryfn is passed", () => {
-    expect(() => queryClient.query("test")).toThrowError();
+    expect(() => client.query("test")).toThrowError();
   });
 
   it("throws if no key is passed", () => {
     expect(() =>
-      queryClient.query({ queryFn: () => Promise.resolve() })
+      client.query({ queryFn: () => Promise.resolve() })
     ).toThrowError();
   });
 
   it("generates a random storage name if none specify", () => {
-    expect((queryClient.storage as any)._config.name).toMatch(
+    expect((client as any).storage._config.name).toMatch(
       /^query-client-[a-z0-9]{4,8}$/
     );
   });

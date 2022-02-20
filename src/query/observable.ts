@@ -1,14 +1,13 @@
 import { Observable } from "rxjs";
-import { QueryOptions, QueryResponse } from "../model";
-import { LocalForageInstance } from "../storage";
+import { QueryObservableOptions, QueryResponse } from "./model";
 import { Query } from "./query";
 
-export class QueryObservable<T = any> extends Observable<QueryResponse<T>> {
-  constructor(storage: LocalForageInstance, options: QueryOptions<T>) {
-    const { key, queryFn } = options;
+export class QueryObservable<T = unknown> extends Observable<QueryResponse<T>> {
+  constructor(options: QueryObservableOptions<T>) {
+    const { queryKey, queryFn, client } = options;
 
-    if (!storage) {
-      throw new Error("Storage not provided");
+    if (!client) {
+      throw new Error("Client not provided");
     }
 
     // Handle no query function
@@ -17,25 +16,31 @@ export class QueryObservable<T = any> extends Observable<QueryResponse<T>> {
     }
 
     // Handle no key
-    if (!key) {
-      throw new Error("Key not provided");
+    if (!queryKey) {
+      throw new Error("Query Key not provided");
     }
 
-    super((observer) => {
-      if (typeof options.onSubscribe === "function") {
-        options.onSubscribe(null);
-      }
+    super((subscriber) => {
+      const query = new Query({
+        ...options,
+        queryKey,
+        queryFn,
+        client,
+        subscriber,
+      });
 
-      const query = new Query(observer, storage, { ...options, key, queryFn });
+      if (typeof options.onSubscribe === "function") {
+        options.onSubscribe(query.getQueryContext());
+      }
 
       query.run();
 
       return () => {
         if (typeof options.onUnsubscribe === "function") {
-          options.onUnsubscribe(null);
+          options.onUnsubscribe(query.getQueryContext());
         }
         query.cancel();
-        observer.complete();
+        subscriber.complete();
       };
     });
   }

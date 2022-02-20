@@ -1,70 +1,24 @@
-import { LocalForageInstance, LocalForageDrivers } from "./storage";
+import { StorageKey } from "./storage";
 
-type Primitives = string | number | boolean;
-type PrimitiveObject = {
-  [key: string]:
-    | PrimitiveObject
-    | Primitives
-    | PrimitiveObject[]
-    | Primitives[];
-};
-export type StorageKey =
-  | PrimitiveObject[]
-  | PrimitiveObject
-  | Primitives
-  | Primitives[];
-export interface StorageItem<T = any> {
+export interface StorageItem<T = unknown> {
+  key: StorageKey;
   data: T;
   updatedAt: number;
   expiresAt: number;
   stalesAt: number;
 }
 
-export type QueryFn<T> = (context: any) => Promise<T>;
-export enum QueryCycle {
-  START = "start",
-  END = "end",
-  PRE_FETCH = "pre-fetch",
-  POST_CACHE_POPULATION = "post-cache-population",
-  ON_STALE = "on-stale",
-}
-
-export interface QueryClientOptions {
-  storageId?: string;
-  storageDriver?: string;
-}
-
-export interface QueryResponse<T> {
-  key: StorageKey;
-  hash: string;
-  data: T | undefined;
-  error: unknown | undefined;
-  isIdle: boolean;
-  isLoading: boolean;
-  isFetching: boolean;
-  isSuccess: boolean;
-  fromCache: boolean;
-  isError: boolean;
-  isRefresh: boolean;
-  isStale: boolean;
-  cycle: QueryCycle;
-  createdAt: number | undefined;
-  updatedAt: number | undefined;
-  refresh: () => Promise<void>;
-  cancel: () => void;
-}
-
-export interface QueryOptions<T> {
+export interface NotificationEvent<PayloadType = unknown> {
+  type: NotificationType;
   key?: StorageKey;
-  storage?: LocalForageInstance;
-  cacheTime?: number;
-  staleTime?: number;
-  staleCheckInterval?: number;
-  observe?: Omit<keyof QueryResponse<T>, "refresh" & "cancel">[];
-  queryFn?: QueryFn<T>;
-  onSuccess?: (context: any) => void;
-  onError?: (context: any) => void;
-  onCancel?: (context: any) => void;
-  onSubscribe?: (context: any) => void;
-  onUnsubscribe?: (context: any) => void;
+  payload?: PayloadType;
+}
+
+export enum NotificationType {
+  queryCancel = "queryCancel",
+  queryRetry = "queryRetry",
+  queryRefresh = "queryRefresh",
+  queryInvalidate = "queryInvalidate",
+  mutationCancel = "mutationCancel",
+  mutationRetry = "mutationRetry",
 }
