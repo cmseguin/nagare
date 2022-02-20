@@ -1,27 +1,13 @@
-import { Subscriber } from "rxjs";
+import { createMockSubscriber } from "../__test__/subscriber";
 import { Query } from "./query";
 import { QueryCycle } from "./model";
 import { xxHash32 } from "js-xxhash";
-import { NagareClient } from "..";
+import { NagareClient } from "../client";
 
 const mockFetch = jest.fn();
 const mockCancel = jest.fn();
-const mockNext = jest.fn();
 let client: NagareClient;
-let unMountFunctions = [];
-const subscriber = {
-  next: mockNext,
-  add: jest.fn((fn: () => void) => {
-    unMountFunctions.push(fn);
-  }),
-  remove: jest.fn(),
-  error: jest.fn(),
-  complete: jest.fn(),
-  unsubscribe: jest.fn(() => {
-    unMountFunctions.forEach((fn) => fn());
-    unMountFunctions = [];
-  }),
-} as any as Subscriber<any>;
+const { subscriber, mockNext } = createMockSubscriber();
 
 describe("Query", () => {
   beforeEach(() => {
@@ -39,7 +25,7 @@ describe("Query", () => {
     expect(Query).toBeDefined();
   });
 
-  xit("throws if no key is passed", () => {
+  it("throws if no key is passed", () => {
     expect(() => {
       new Query({
         client,
@@ -50,7 +36,7 @@ describe("Query", () => {
     }).toThrowError();
   });
 
-  xit("throws if no queryFn is passed", () => {
+  it("throws if no queryFn is passed", () => {
     expect(() => {
       new Query({ client, subscriber, queryKey: "test", queryFn: undefined });
     }).toThrowError();

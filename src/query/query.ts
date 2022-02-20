@@ -44,6 +44,7 @@ export class Query<T = unknown> {
 
   constructor(options: QueryOptions<T>) {
     this.options = this.defaultOptions(options);
+    this.validateOptions();
     this.client = this.options.client;
     this.subscriber = this.options.subscriber;
     this.queryFn = this.options.queryFn;
@@ -294,6 +295,20 @@ export class Query<T = unknown> {
         return this.refresh();
       default:
         console.warn(`Unknown event type: ${event.type}`);
+    }
+  }
+
+  private validateOptions() {
+    if (!this.options.client) {
+      throw new Error("Query requires a client");
+    }
+
+    if (!this.options.queryKey) {
+      throw new Error("Query key is required");
+    }
+
+    if (!this.options.queryFn) {
+      throw new Error("Query function is required");
     }
   }
 }
