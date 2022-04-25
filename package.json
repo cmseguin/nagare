@@ -1,6 +1,12 @@
 {
   "name": "root",
   "private": true,
+  "scripts": {
+    "lint": "eslint '*/**/*.{js,jsx,ts,tsx}'",
+    "check": "lerna run --parallel check",
+    "test": "lerna run --parallel test",
+    "test:coverage": "lerna run --parallel test:coverage"
+  },
   "devDependencies": {
     "lerna": "^4.0.0"
   }
