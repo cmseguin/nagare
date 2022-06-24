@@ -10,8 +10,8 @@
     "downlevelIteration": true
   },
   "exclude": [
-    "dist",
+    "packages/**/dist",
     "**/*.spec.*",
-    "./src/index.ts"
+    "/packages/**/src/index.ts"
   ]
 }
