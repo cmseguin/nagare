@@ -1,6 +1,6 @@
 {
   "name": "@narage/core",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "A stale while revalidate library for front-end frameworks",
   "main": "dist/index.js",
   "source": "src/index.ts",
