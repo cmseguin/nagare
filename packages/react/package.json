@@ -1,0 +1,40 @@
+{
+  "name": "@nagare/react",
+  "version": "0.0.1",
+  "description": "A wrapper and utility over nagare core.",
+  "main": "dist/index.js",
+  "source": "src/index.ts",
+  "module": "dist/module.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "prepare": "npm run build",
+    "build": "parcel build",
+    "build:watch": "parcel watch",
+    "lint": "eslint 'src/**/*.{js,jsx,ts,tsx}'",
+    "check": "tsc --noEmit",
+    "test": "jest",
+    "test:coverage": "jest --coverage"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cmseguin/nagare.git"
+  },
+  "author": "cmseguin",
+  "contributors": [
+    "cmseguin (https://github.com/cmseguin)"
+  ],
+  "keywords": [],
+  "license": "ISC",
+  "dependencies": {
+    "@nagare/core": "0.0.2"
+  },
+  "peerDependencies": {
+    "react": "16.8"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "@types/react": "^18.0.15"
+  }
+}
