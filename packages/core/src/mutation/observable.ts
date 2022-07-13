@@ -1,8 +1,11 @@
 import { Observable } from "rxjs";
-import { MutationObservableOptions } from "./model";
+import { MutationObservableOptions, MutationResponse } from "./model";
 import { Mutation } from "./mutation";
 
-export class MutationObservable<T = unknown> extends Observable<unknown> {
+export class MutationObservable<T = unknown> extends Observable<
+  MutationResponse<T>
+> {
+  private mutation?: Mutation<T>;
   constructor(options: MutationObservableOptions<T>) {
     const { mutationKey, mutationFn, client } = options;
 
@@ -23,12 +26,15 @@ export class MutationObservable<T = unknown> extends Observable<unknown> {
         mutationKey,
         mutationFn,
       });
+      this.mutation = mutation;
 
       if (typeof options.onSubscribe === "function") {
         options.onSubscribe(mutation.getMutationContext());
       }
 
-      mutation.mutate();
+      if (options.mutateOnInit === true) {
+        mutation.mutate();
+      }
 
       return () => {
         if (typeof options.onUnsubscribe === "function") {
@@ -38,5 +44,9 @@ export class MutationObservable<T = unknown> extends Observable<unknown> {
         subscriber.complete();
       };
     });
+  }
+
+  public get value() {
+    return this.mutation;
   }
 }

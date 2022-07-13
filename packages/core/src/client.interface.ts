@@ -1,7 +1,24 @@
 import { Observable } from "rxjs";
 import { MutationFn, MutationMethodOptions } from "./mutation/model";
-import { QueryFn, QueryOptions, QueryResponse } from "./query/model";
+import {
+  QueryFn,
+  QueryMethodOptions,
+  QueryOptions,
+  QueryResponse,
+} from "./query/model";
 import { StorageKey } from "./storage";
+
+export type QueryParams<T> = [
+  arg0: QueryMethodOptions<T> | StorageKey,
+  arg1?: QueryMethodOptions<T> | QueryFn<T>,
+  arg2?: QueryMethodOptions<T>
+];
+
+export type MutationParams<T> = [
+  arg0: MutationMethodOptions<T> | StorageKey,
+  arg1?: MutationMethodOptions<T> | MutationFn<T>,
+  arg2?: MutationMethodOptions<T>
+];
 
 export abstract class NagareClientInterface {
   public abstract query<T = unknown>(

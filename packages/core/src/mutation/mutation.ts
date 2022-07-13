@@ -102,6 +102,7 @@ export class Mutation<T = unknown> {
       isSuccess: this.isSuccess$.value,
       isError: this.isError$.value,
       cycle,
+      mutate: () => this.mutate(),
       cancel: () => this.cancel(),
     };
   }

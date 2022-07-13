@@ -21,6 +21,7 @@ export interface MutationResponse<T = unknown> {
   isSuccess: boolean;
   isError: boolean;
   cycle: MutationCycle;
+  mutate: () => Promise<T>;
   cancel: () => void;
 }
 
@@ -45,6 +46,7 @@ export interface MutationOptions<T = unknown> {
   observe?: Omit<keyof MutationResponse<T>, "cancel">[];
   cacheTime?: number;
   staleTime?: number;
+  mutateOnInit?: boolean;
   onMutate?: (context: MutationContext<T>) => void;
   onSuccess?: (context: MutationContext<T>, data: T) => void;
   onError?: (context: MutationContext<T>, error: unknown) => void;

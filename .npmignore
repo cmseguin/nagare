@@ -7,3 +7,7 @@ babel.config.js
 .vscode/
 .github/
 __test__/
+coverage/
+.parcel-cache/
+babel.config.json
+parcel-bundle-reports/

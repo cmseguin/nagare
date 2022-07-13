@@ -9,9 +9,12 @@
     "esModuleInterop": true,
     "downlevelIteration": true
   },
+  "include": [
+    "./src/**/*.ts"
+  ],
   "exclude": [
-    "packages/**/dist",
-    "**/*.spec.*",
-    "/packages/**/src/index.ts"
+    "node_modules",
+    "./dist/**/*",
+    "**/*.spec.*"
   ]
 }
