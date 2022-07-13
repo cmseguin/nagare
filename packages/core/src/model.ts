@@ -1,4 +1,5 @@
 import { StorageKey } from "./storage";
+export { Subscription } from "rxjs";
 
 export interface StorageItem<T = unknown> {
   key: StorageKey;

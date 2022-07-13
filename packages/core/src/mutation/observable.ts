@@ -46,7 +46,7 @@ export class MutationObservable<T = unknown> extends Observable<
     });
   }
 
-  public get value() {
-    return this.mutation;
+  public getInitialMutationResponse() {
+    return this.mutation?.getInitialMutationResponse();
   }
 }

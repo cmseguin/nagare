@@ -56,6 +56,10 @@ export class Query<T = unknown> {
     this.isIdle$Handler();
   }
 
+  public getInitialQueryResponse(): QueryResponse<T> {
+    return this.buildQueryResponse(QueryCycle.INITIAL);
+  }
+
   public async run() {
     return this.callQueryFn(false);
   }
