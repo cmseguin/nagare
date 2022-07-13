@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "description": "A wrapper and utility over nagare core.",
   "main": "dist/index.js",
-  "source": "src/index.ts",
+  "source": "src/index.tsx",
   "module": "dist/module.js",
   "types": "dist/index.d.ts",
   "scripts": {
@@ -26,7 +26,7 @@
   "keywords": [],
   "license": "ISC",
   "dependencies": {
-    "@nagare/core": "0.0.2"
+    "@nagare/core": "0.0.3"
   },
   "peerDependencies": {
     "react": "16.8"

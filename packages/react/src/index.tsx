@@ -1,27 +1,11 @@
 import React, { useEffect, useContext, useState } from "react";
 import {
-  MutationFn,
-  MutationMethodOptions,
+  MutationParams,
   MutationResponse,
   NagareClient,
-  QueryFn,
-  QueryMethodOptions,
+  QueryParams,
   QueryResponse,
-  StorageKey,
 } from "@nagare/core";
-
-// TODO Remove this when exporting in core
-export type QueryParams<T> = [
-  arg0: QueryMethodOptions<T> | StorageKey,
-  arg1?: QueryMethodOptions<T> | QueryFn<T>,
-  arg2?: QueryMethodOptions<T>
-];
-
-export type MutationParams<T> = [
-  arg0: MutationMethodOptions<T> | StorageKey,
-  arg1?: MutationMethodOptions<T> | MutationFn<T>,
-  arg2?: MutationMethodOptions<T>
-];
 
 const NagareContext = React.createContext<NagareClient | undefined>(undefined);
 
