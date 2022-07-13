@@ -3,7 +3,6 @@ import { NagareClient } from "../client";
 import { LocalForageInstance, StorageKey } from "../storage";
 
 export enum MutationCycle {
-  INITIAL = "initial",
   MUTATE = "mutate",
   START = "start",
   END = "end",

@@ -47,8 +47,4 @@ export class QueryObservable<T = unknown> extends Observable<QueryResponse<T>> {
       };
     });
   }
-
-  public getInitialQueryResponse() {
-    return this.query?.getInitialQueryResponse();
-  }
 }

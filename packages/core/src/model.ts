@@ -1,5 +1,7 @@
 import { StorageKey } from "./storage";
-export { Subscription } from "rxjs";
+import { Subscription as rxjsSubscription } from "rxjs";
+
+export type Subscription = typeof rxjsSubscription;
 
 export interface StorageItem<T = unknown> {
   key: StorageKey;

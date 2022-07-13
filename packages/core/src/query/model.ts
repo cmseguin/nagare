@@ -5,7 +5,6 @@ import { LocalForageInstance, StorageKey } from "../storage";
 export type QueryFn<T = unknown> = (context: QueryContext<T>) => Promise<T>;
 
 export enum QueryCycle {
-  INITIAL = "initial",
   START = "start",
   END = "end",
   PRE_FETCH = "pre-fetch",

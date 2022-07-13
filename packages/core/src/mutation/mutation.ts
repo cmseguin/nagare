@@ -83,10 +83,6 @@ export class Mutation<T = unknown> {
     }
   }
 
-  public getInitialMutationResponse(): MutationResponse<T> {
-    return this.buildMutationResponse(MutationCycle.INITIAL);
-  }
-
   private defaultOptions(options: MutationOptions<T>): MutationOptions<T> {
     return {
       cacheTime: 5 * 60 * 1000,
