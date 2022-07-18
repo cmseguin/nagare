@@ -26,7 +26,7 @@
   "keywords": [],
   "license": "ISC",
   "dependencies": {
-    "@nagare/core": "0.0.3"
+    "@nagare/core": "0.0.7"
   },
   "peerDependencies": {
     "react": "16.8"
