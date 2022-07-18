@@ -31,7 +31,7 @@ export class Mutation<T = unknown> {
   private abortController = new AbortController();
 
   private _lastResponse?: MutationResponse<T>;
-  private _initialResponse?: MutationResponse<T>;
+  private _initialResponse: MutationResponse<T>;
 
   private queue: QueueItems = [];
   private initialized = false;

@@ -3,7 +3,7 @@ import { QueryObservableOptions, QueryResponse } from "./model";
 import { Query } from "./query";
 
 export class QueryObservable<T = unknown> extends Observable<QueryResponse<T>> {
-  private query?: Query<T>;
+  private query: Query<T>;
 
   constructor(options: QueryObservableOptions<T>) {
     const { queryKey, queryFn, client } = options;
@@ -50,6 +50,6 @@ export class QueryObservable<T = unknown> extends Observable<QueryResponse<T>> {
   }
 
   public get initialResponse() {
-    return this.query?.initialResponse;
+    return this.query.initialResponse;
   }
 }

@@ -5,7 +5,7 @@ import { Mutation } from "./mutation";
 export class MutationObservable<T = unknown> extends Observable<
   MutationResponse<T>
 > {
-  private mutation?: Mutation<T>;
+  private mutation: Mutation<T>;
 
   constructor(options: MutationObservableOptions<T>) {
     const { mutationKey, mutationFn, client } = options;
@@ -48,6 +48,6 @@ export class MutationObservable<T = unknown> extends Observable<
   }
 
   public get initialResponse() {
-    return this.mutation?.initialResponse;
+    return this.mutation.initialResponse;
   }
 }

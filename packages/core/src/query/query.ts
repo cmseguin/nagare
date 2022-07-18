@@ -45,7 +45,7 @@ export class Query<T = unknown> {
   private abortController = new AbortController();
 
   private _lastResponse?: QueryResponse<T>;
-  private _initialResponse?: QueryResponse<T>;
+  private _initialResponse: QueryResponse<T>;
 
   private queue: QueueItems = [];
 
