@@ -1,6 +1,3 @@
 {
-  "presets": [
-    ["@babel/preset-env", { "targets": { "node": "current" } }],
-    "@babel/preset-typescript"
-  ]
+  "extends": "../../babel.config.json",
 }

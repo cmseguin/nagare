@@ -15,7 +15,11 @@ import {
 } from "./model";
 import { encodeKey, StorageKey } from "../storage";
 import { NagareClient } from "../client";
-import { NotificationEvent, NotificationType } from "../model";
+import { NotificationEvent, NotificationType, QueueItem } from "../model";
+
+type EmitQueueItem = QueueItem<"emit", () => void>;
+type UnmountQueueItem = QueueItem<"unmount", () => void>;
+type QueueItems = (EmitQueueItem | UnmountQueueItem)[];
 
 export class Query<T = unknown> {
   private data$ = new BehaviorSubject<T | undefined>(undefined);
@@ -36,27 +40,33 @@ export class Query<T = unknown> {
   private queryKey: StorageKey;
   private queryFn: QueryFn<T>;
   private options: QueryOptions<T>;
-  private subscriber: Subscriber<QueryResponse<T>>;
+  private subscriber?: Subscriber<QueryResponse<T>>;
   private client: NagareClient;
   private abortController = new AbortController();
 
   private _lastResponse?: QueryResponse<T>;
+  private _initialResponse?: QueryResponse<T>;
+
+  private queue: QueueItems = [];
+
+  private initialized = false;
 
   constructor(options: QueryOptions<T>) {
     this.options = this.defaultOptions(options);
     this.validateOptions();
     this.client = this.options.client;
-    this.subscriber = this.options.subscriber;
     this.queryFn = this.options.queryFn;
     this.queryKey = this.options.queryKey;
 
-    this.notifications$Handler();
-    this.isLoading$Handler();
-    this.isStale$Handler();
-    this.isIdle$Handler();
+    if (this.options.subscriber) {
+      this.registerSubscriber(this.options.subscriber);
+    }
+
+    this._initialResponse = this.buildQueryResponse(QueryCycle.INITIAL);
   }
 
   public async run() {
+    this.initialize();
     return this.callQueryFn(false);
   }
 
@@ -69,6 +79,36 @@ export class Query<T = unknown> {
     if (typeof this.options.onCancel === "function") {
       this.options.onCancel(this.getQueryContext());
     }
+  }
+
+  public registerSubscriber(subscriber: Subscriber<QueryResponse<T>>) {
+    this.subscriber = subscriber;
+
+    while (this.queue.length > 0) {
+      const item = this.queue.shift();
+      if (item) {
+        item.payload();
+      }
+    }
+  }
+
+  public get initialResponse() {
+    return this._initialResponse;
+  }
+
+  private initialize() {
+    if (!this.initialized) {
+      if (!this.subscriber) {
+        throw new Error("Subscriber is not registered");
+      }
+
+      this.notifications$Handler();
+      this.isLoading$Handler();
+      this.isStale$Handler();
+      this.isIdle$Handler();
+    }
+
+    this.initialized = true;
   }
 
   private async callQueryFn(isRefresh: boolean) {
@@ -132,7 +172,7 @@ export class Query<T = unknown> {
     const response = this.buildQueryResponse(cycle);
 
     if (!this._lastResponse || !this.options.observe) {
-      this.subscriber.next(response);
+      this.emitOrQueue(response);
     }
 
     if (this._lastResponse && this.options.observe) {
@@ -144,11 +184,33 @@ export class Query<T = unknown> {
         );
 
       if (change) {
-        this.subscriber.next(response);
+        this.emitOrQueue(response);
       }
     }
 
     this._lastResponse = response;
+  }
+
+  private emitOrQueue(response: QueryResponse<T>) {
+    if (!this.subscriber) {
+      this.queue.push({
+        type: "emit",
+        payload: () => this.subscriber?.next(response),
+      });
+      return;
+    }
+    this.subscriber.next(response);
+  }
+
+  private unmountOrQueue(handler: () => void) {
+    if (!this.subscriber) {
+      this.queue.push({
+        type: "unmount",
+        payload: () => this.subscriber?.add(handler),
+      });
+      return;
+    }
+    this.subscriber.add(handler);
   }
 
   private buildQueryResponse(cycle: QueryCycle): QueryResponse<T> {
@@ -206,7 +268,7 @@ export class Query<T = unknown> {
       )
       .subscribe();
 
-    this.subscriber.add(() => {
+    this.unmountOrQueue(() => {
       isLoadingSub.unsubscribe();
     });
   }
@@ -245,7 +307,7 @@ export class Query<T = unknown> {
       )
       .subscribe();
 
-    this.subscriber.add(() => {
+    this.unmountOrQueue(() => {
       sub.unsubscribe();
     });
   }
@@ -265,7 +327,7 @@ export class Query<T = unknown> {
       )
       .subscribe();
 
-    this.subscriber.add(() => {
+    this.unmountOrQueue(() => {
       isIdleSub.unsubscribe();
     });
   }
@@ -282,7 +344,7 @@ export class Query<T = unknown> {
       )
       .subscribe();
 
-    this.subscriber.add(() => {
+    this.unmountOrQueue(() => {
       sub.unsubscribe();
     });
   }

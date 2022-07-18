@@ -3,6 +3,7 @@ import { NagareClient } from "../client";
 import { LocalForageInstance, StorageKey } from "../storage";
 
 export enum MutationCycle {
+  INITIAL = "initial",
   MUTATE = "mutate",
   START = "start",
   END = "end",
@@ -39,7 +40,7 @@ export type MutationObservableOptions<T = unknown> = Omit<
 
 export interface MutationOptions<T = unknown> {
   client: NagareClient;
-  subscriber: Subscriber<MutationResponse<T>>;
+  subscriber?: Subscriber<MutationResponse<T>>;
   mutationKey: StorageKey;
   mutationFn: MutationFn<T>;
   storage?: LocalForageInstance;
@@ -54,7 +55,7 @@ export interface MutationOptions<T = unknown> {
 }
 
 export interface MutationContext<T = unknown> {
-  observer: Subscriber<MutationResponse<T>>;
   options: MutationOptions<T>;
   signal: AbortSignal;
+  observer?: Subscriber<MutationResponse<T>>;
 }

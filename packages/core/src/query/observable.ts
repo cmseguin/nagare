@@ -4,6 +4,7 @@ import { Query } from "./query";
 
 export class QueryObservable<T = unknown> extends Observable<QueryResponse<T>> {
   private query?: Query<T>;
+
   constructor(options: QueryObservableOptions<T>) {
     const { queryKey, queryFn, client } = options;
 
@@ -22,20 +23,11 @@ export class QueryObservable<T = unknown> extends Observable<QueryResponse<T>> {
     }
 
     super((subscriber) => {
-      const query = new Query({
-        ...options,
-        queryKey,
-        queryFn,
-        client,
-        subscriber,
-      });
-
-      this.query = query;
-
       if (typeof options.onSubscribe === "function") {
         options.onSubscribe(query.getQueryContext());
       }
 
+      query.registerSubscriber(subscriber);
       query.run();
 
       return () => {
@@ -46,5 +38,18 @@ export class QueryObservable<T = unknown> extends Observable<QueryResponse<T>> {
         subscriber.complete();
       };
     });
+
+    const query = new Query({
+      ...options,
+      queryKey,
+      queryFn,
+      client,
+    });
+
+    this.query = query;
+  }
+
+  public get initialResponse() {
+    return this.query?.initialResponse;
   }
 }

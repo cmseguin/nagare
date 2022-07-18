@@ -1,7 +1,7 @@
 import { BehaviorSubject, Subscriber } from "rxjs";
 import { filter, tap } from "rxjs/operators";
 import { NagareClient } from "../client";
-import { NotificationEvent, NotificationType } from "../model";
+import { NotificationEvent, NotificationType, QueueItem } from "../model";
 import { encodeKey, StorageKey } from "../storage";
 import {
   MutationContext,
@@ -10,6 +10,10 @@ import {
   MutationOptions,
   MutationResponse,
 } from "./model";
+
+type EmitQueueItem = QueueItem<"emit", () => void>;
+type UnmountQueueItem = QueueItem<"unmount", () => void>;
+type QueueItems = (EmitQueueItem | UnmountQueueItem)[];
 
 export class Mutation<T = unknown> {
   private data$ = new BehaviorSubject<T | undefined>(undefined);
@@ -22,11 +26,15 @@ export class Mutation<T = unknown> {
   private options: MutationOptions<T>;
   private mutationKey: StorageKey;
   private mutationFn: MutationFn<T>;
-  private subscriber: Subscriber<MutationResponse<T>>;
+  private subscriber?: Subscriber<MutationResponse<T>>;
   private client: NagareClient;
   private abortController = new AbortController();
 
   private _lastResponse?: MutationResponse<T>;
+  private _initialResponse?: MutationResponse<T>;
+
+  private queue: QueueItems = [];
+  private initialized = false;
 
   constructor(options: MutationOptions<T>) {
     this.options = this.defaultOptions(options);
@@ -34,15 +42,36 @@ export class Mutation<T = unknown> {
     this.mutationKey = this.options.mutationKey;
     this.mutationFn = this.options.mutationFn;
     this.client = this.options.client;
-    this.subscriber = this.options.subscriber;
 
-    this.notifications$Handler();
+    if (this.options.subscriber) {
+      this.subscriber = this.options.subscriber;
+    }
+
+    this._initialResponse = this.buildMutationResponse(MutationCycle.INITIAL);
+  }
+
+  public get initialResponse() {
+    return this._initialResponse;
+  }
+
+  public registerSubscriber(subscriber: Subscriber<MutationResponse<T>>) {
+    this.subscriber = subscriber;
+
+    while (this.queue.length > 0) {
+      const item = this.queue.shift();
+      if (item) {
+        item.payload();
+      }
+    }
   }
 
   public async mutate(): Promise<T> {
+    this.initialize();
+
     if (typeof this.options?.onMutate === "function") {
       this.options.onMutate(this.getMutationContext());
     }
+
     this.emit(MutationCycle.MUTATE);
 
     this.isLoading$.next(true);
@@ -83,6 +112,18 @@ export class Mutation<T = unknown> {
     }
   }
 
+  private initialize() {
+    if (!this.initialized) {
+      if (!this.subscriber) {
+        throw new Error("Subscriber is not registered");
+      }
+
+      this.notifications$Handler();
+    }
+
+    this.initialized = true;
+  }
+
   private defaultOptions(options: MutationOptions<T>): MutationOptions<T> {
     return {
       cacheTime: 5 * 60 * 1000,
@@ -111,7 +152,7 @@ export class Mutation<T = unknown> {
     const response = this.buildMutationResponse(cycle);
 
     if (!this._lastResponse || !this.options.observe) {
-      this.subscriber.next(response);
+      this.emitOrQueue(response);
     }
 
     if (this._lastResponse && this.options.observe) {
@@ -123,18 +164,40 @@ export class Mutation<T = unknown> {
         );
 
       if (change) {
-        this.subscriber.next(response);
+        this.emitOrQueue(response);
       }
     }
 
     this._lastResponse = response;
   }
 
+  private emitOrQueue(response: MutationResponse<T>) {
+    if (!this.subscriber) {
+      this.queue.push({
+        type: "emit",
+        payload: () => this.subscriber?.next(response),
+      });
+      return;
+    }
+    this.subscriber.next(response);
+  }
+
+  private unmountOrQueue(handler: () => void) {
+    if (!this.subscriber) {
+      this.queue.push({
+        type: "unmount",
+        payload: () => this.subscriber?.add(handler),
+      });
+      return;
+    }
+    this.subscriber.add(handler);
+  }
+
   public getMutationContext(): MutationContext<T> {
     return {
-      observer: this.subscriber,
       options: this.options,
       signal: this.abortController.signal,
+      observer: this.subscriber,
     };
   }
 
@@ -150,7 +213,7 @@ export class Mutation<T = unknown> {
       )
       .subscribe();
 
-    this.subscriber.add(() => {
+    this.unmountOrQueue(() => {
       sub.unsubscribe();
     });
   }

@@ -5,6 +5,7 @@ import { LocalForageInstance, StorageKey } from "../storage";
 export type QueryFn<T = unknown> = (context: QueryContext<T>) => Promise<T>;
 
 export enum QueryCycle {
+  INITIAL = "initial",
   START = "start",
   END = "end",
   PRE_FETCH = "pre-fetch",
@@ -52,7 +53,7 @@ export interface QueryOptions<T = unknown> {
   queryKey: StorageKey;
   queryFn: QueryFn<T>;
   client: NagareClient;
-  subscriber: Subscriber<QueryResponse<T>>;
+  subscriber?: Subscriber<QueryResponse<T>>;
   storage?: LocalForageInstance;
   cacheTime?: number;
   staleTime?: number;
@@ -65,7 +66,7 @@ export interface QueryOptions<T = unknown> {
 
 export interface QueryContext<T = unknown> {
   queryKey: StorageKey;
-  observer: Subscriber<QueryResponse<T>>;
   signal: AbortSignal;
   options: QueryOptions<T>;
+  observer?: Subscriber<QueryResponse<T>>;
 }

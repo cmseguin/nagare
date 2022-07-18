@@ -25,3 +25,8 @@ export enum NotificationType {
   mutationCancel = "mutationCancel",
   mutationRetry = "mutationRetry",
 }
+
+export interface QueueItem<T extends string, P = unknown> {
+  type: T;
+  payload: P;
+}
