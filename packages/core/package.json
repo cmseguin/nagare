@@ -1,6 +1,6 @@
 {
   "name": "@nagare/core",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "A stale while revalidate (SWR) core library that is framework agnostic.",
   "main": "dist/index.js",
   "source": "src/index.ts",
