@@ -11,6 +11,8 @@ import {
 
 const NagareContext = React.createContext<NagareClient | undefined>(undefined);
 
+export * from "@nagare/core";
+
 /**
  * ## NagareClientProvider
  * Provides the nagare client to the application.
