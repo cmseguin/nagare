@@ -11,6 +11,10 @@ import {
 
 const NagareContext = React.createContext<NagareClient | undefined>(undefined);
 
+/**
+ * ## NagareClientProvider
+ * Provides the nagare client to the application.
+ */
 export const NagareClientProvider: React.FC<{
   client: NagareClient;
   children: React.ReactNode;
@@ -23,6 +27,12 @@ export const NagareClientProvider: React.FC<{
   );
 };
 
+/**
+ * ## useQuery
+ * Wrapper around `NagareClient.query`
+ * @param args QueryParams
+ * @returns QueryResponse
+ */
 export function useQuery<T = unknown>(...args: QueryParams<T>) {
   const client = useContext(NagareContext);
   const subscription = useRef<{ unsubscribe: () => void }>();
@@ -52,6 +62,12 @@ export function useQuery<T = unknown>(...args: QueryParams<T>) {
   return query as NonNullable<QueryResponse<T>>;
 }
 
+/**
+ * ## useMutation
+ * Wrapper around `NagareClient.mutate`
+ * @param args MutationParams
+ * @returns MutationResponse
+ */
 export function useMutation<T = unknown>(...args: MutationParams<T>) {
   const client = useContext(NagareContext);
   const subscription = useRef<{ unsubscribe: () => void }>();
@@ -79,4 +95,13 @@ export function useMutation<T = unknown>(...args: MutationParams<T>) {
   }, []);
 
   return mutation as NonNullable<MutationResponse<T>>;
+}
+
+/**
+ * ## useClient
+ * Returns the nagare client instance.
+ * @returns NagareClient
+ */
+export function useClient() {
+  return useContext(NagareContext);
 }

@@ -25,11 +25,11 @@ export abstract class NagareClientInterface {
     options: QueryOptions<T>
   ): Observable<QueryResponse<T>>;
   public abstract query<T = unknown>(
-    queryKey: StorageKey,
-    options?: QueryOptions<T>
+    key: StorageKey,
+    options: QueryOptions<T>
   ): Observable<QueryResponse<T>>;
   public abstract query<T = unknown>(
-    queryKey: StorageKey,
+    key: StorageKey,
     queryFn: QueryFn<T>,
     options?: QueryOptions<T>
   ): Observable<QueryResponse<T>>;
@@ -39,7 +39,7 @@ export abstract class NagareClientInterface {
   ): Observable<T>;
   public abstract mutation<T = unknown>(
     key: StorageKey,
-    options?: MutationMethodOptions<T>
+    options: MutationMethodOptions<T>
   ): Observable<T>;
   public abstract mutation<T = unknown>(
     key: StorageKey,
