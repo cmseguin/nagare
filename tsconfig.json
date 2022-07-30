@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "es5",
+    "module": "CommonJS",
+    "lib": ["es2017", "es7", "es6", "dom"],
+    "declaration": true,
+    "outDir": "dist",
+    "strict": true,
+    "esModuleInterop": true,
+    "downlevelIteration": true
+  },
+  "include": [
+    "packages/**/src/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "packages/**/dist/**/*",
+    "**/*.spec.*"
+  ]
+}

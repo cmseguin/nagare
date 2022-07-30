@@ -1,4 +1,5 @@
 import { NagareClient } from "../client";
+import { QueryResponse } from "./model";
 import { QueryObservable } from "./observable";
 
 let client: NagareClient;
@@ -49,5 +50,21 @@ describe("QueryObservable", () => {
     expect(typeof queryObservable.subscribe).toBe("function");
     expect(typeof queryObservable.pipe).toBe("function");
     expect(typeof queryObservable.forEach).toBe("function");
+  });
+
+  it("Emits syncronously an initial response", () => {
+    let response: QueryResponse<any>;
+    const queryObservable = new QueryObservable({
+      client,
+      queryKey: "test",
+      queryFn: () => Promise.resolve(undefined),
+    });
+
+    expect(queryObservable.initialResponse).toBeDefined();
+    const sub = queryObservable.subscribe((r) => {
+      response = r;
+    });
+    expect(queryObservable.initialResponse).toBeDefined();
+    sub.unsubscribe();
   });
 });

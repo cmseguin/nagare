@@ -1,4 +1,7 @@
 import { StorageKey } from "./storage";
+import { Subscription as rxjsSubscription } from "rxjs";
+
+export type Subscription = typeof rxjsSubscription;
 
 export interface StorageItem<T = unknown> {
   key: StorageKey;
@@ -21,4 +24,9 @@ export enum NotificationType {
   queryInvalidate = "queryInvalidate",
   mutationCancel = "mutationCancel",
   mutationRetry = "mutationRetry",
+}
+
+export interface QueueItem<T extends string, P = unknown> {
+  type: T;
+  payload: P;
 }

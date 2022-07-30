@@ -8,7 +8,11 @@ import {
   LocalForageInstance,
   StorageKey,
 } from "./storage";
-import { NagareClientInterface } from "./client.interface";
+import {
+  MutationParams,
+  NagareClientInterface,
+  QueryParams,
+} from "./client.interface";
 import { NotificationEvent, NotificationType, StorageItem } from "./model";
 import { MutationFn, MutationMethodOptions } from "./mutation/model";
 import { MutationObservable } from "./mutation/observable";
@@ -24,11 +28,7 @@ export class NagareClient implements NagareClientInterface {
     this.generateStorage();
   }
 
-  public query<T = unknown>(
-    arg0: QueryMethodOptions<T> | StorageKey,
-    arg1?: QueryMethodOptions<T> | QueryFn<T>,
-    arg2?: QueryMethodOptions<T>
-  ) {
+  public query<T = unknown>(...[arg0, arg1, arg2]: QueryParams<T>) {
     // Grab arguments from params
     const { queryKey, queryFn, options } = this.getQueryArgs(arg0, arg1, arg2);
 
@@ -48,11 +48,7 @@ export class NagareClient implements NagareClientInterface {
     });
   }
 
-  public mutation<T = unknown>(
-    arg0: MutationMethodOptions<T> | StorageKey,
-    arg1?: MutationMethodOptions<T> | MutationFn<T>,
-    arg2?: MutationMethodOptions<T>
-  ) {
+  public mutation<T = unknown>(...[arg0, arg1, arg2]: MutationParams<T>) {
     const { mutationKey, mutationFn, options } = this.getMutationArgs(
       arg0,
       arg1,

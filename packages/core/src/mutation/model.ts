@@ -3,6 +3,7 @@ import { NagareClient } from "../client";
 import { LocalForageInstance, StorageKey } from "../storage";
 
 export enum MutationCycle {
+  INITIAL = "initial",
   MUTATE = "mutate",
   START = "start",
   END = "end",
@@ -21,6 +22,7 @@ export interface MutationResponse<T = unknown> {
   isSuccess: boolean;
   isError: boolean;
   cycle: MutationCycle;
+  mutate: () => Promise<T>;
   cancel: () => void;
 }
 
@@ -38,13 +40,14 @@ export type MutationObservableOptions<T = unknown> = Omit<
 
 export interface MutationOptions<T = unknown> {
   client: NagareClient;
-  subscriber: Subscriber<MutationResponse<T>>;
+  subscriber?: Subscriber<MutationResponse<T>>;
   mutationKey: StorageKey;
   mutationFn: MutationFn<T>;
   storage?: LocalForageInstance;
   observe?: Omit<keyof MutationResponse<T>, "cancel">[];
   cacheTime?: number;
   staleTime?: number;
+  mutateOnInit?: boolean;
   onMutate?: (context: MutationContext<T>) => void;
   onSuccess?: (context: MutationContext<T>, data: T) => void;
   onError?: (context: MutationContext<T>, error: unknown) => void;
@@ -52,7 +55,7 @@ export interface MutationOptions<T = unknown> {
 }
 
 export interface MutationContext<T = unknown> {
-  observer: Subscriber<MutationResponse<T>>;
   options: MutationOptions<T>;
   signal: AbortSignal;
+  observer?: Subscriber<MutationResponse<T>>;
 }
